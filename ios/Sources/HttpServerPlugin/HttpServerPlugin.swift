@@ -10,14 +10,31 @@ public class HttpServerPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "HttpServerPlugin"
     public let jsName = "HttpServer"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "echo", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "startServer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stopServer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getServerUrl", returnType: CAPPluginReturnPromise)
     ]
     private let implementation = HttpServer()
 
-    @objc func echo(_ call: CAPPluginCall) {
-        let value = call.getString("value") ?? ""
+    @objc func startServer(_ call: CAPPluginCall) {
+        if let url = implementation.start() {
+            call.resolve([
+                "url": url
+            ])
+        } else {
+            call.reject("Could not start server")
+        }
+    }
+
+    @objc func stopServer(_ call: CAPPluginCall) {
+        implementation.stop()
+        call.resolve()
+    }
+
+    @objc func getServerUrl(_ call: CAPPluginCall) {
+        let url = implementation.getUrl() ?? ""
         call.resolve([
-            "value": implementation.echo(value)
+            "url": url
         ])
     }
 }

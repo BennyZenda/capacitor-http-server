@@ -3,8 +3,15 @@ import { WebPlugin } from '@capacitor/core';
 import type { HttpServerPlugin } from './definitions';
 
 export class HttpServerWeb extends WebPlugin implements HttpServerPlugin {
-  async echo(options: { value: string }): Promise<{ value: string }> {
-    console.log('ECHO', options);
-    return options;
+  async startServer(): Promise<{ url: string }> {
+    throw this.unimplemented('Not implemented on web.');
+  }
+
+  async stopServer(): Promise<void> {
+    throw this.unimplemented('Not implemented on web.');
+  }
+
+  async getServerUrl(): Promise<{ url: string }> {
+    throw this.unimplemented('Not implemented on web.');
   }
 }

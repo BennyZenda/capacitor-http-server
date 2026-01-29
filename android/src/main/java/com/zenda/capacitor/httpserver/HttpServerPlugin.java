@@ -5,18 +5,41 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.IOException;
 
 @CapacitorPlugin(name = "HttpServer")
 public class HttpServerPlugin extends Plugin {
 
     private HttpServer implementation = new HttpServer();
 
-    @PluginMethod
-    public void echo(PluginCall call) {
-        String value = call.getString("value");
+    @Override
+    public void load() {
+        implementation.init(getContext());
+    }
 
+    @PluginMethod
+    public void startServer(PluginCall call) {
+        try {
+            String url = implementation.start();
+            JSObject ret = new JSObject();
+            ret.put("url", url);
+            call.resolve(ret);
+        } catch (IOException e) {
+            call.reject("Could not start server", e);
+        }
+    }
+
+    @PluginMethod
+    public void stopServer(PluginCall call) {
+        implementation.stop();
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getServerUrl(PluginCall call) {
+        String url = implementation.getUrl();
         JSObject ret = new JSObject();
-        ret.put("value", implementation.echo(value));
+        ret.put("url", url);
         call.resolve(ret);
     }
 }

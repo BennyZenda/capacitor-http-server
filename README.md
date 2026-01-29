@@ -13,24 +13,48 @@ npx cap sync
 
 <docgen-index>
 
-* [`echo(...)`](#echo)
+* [`startServer()`](#startserver)
+* [`stopServer()`](#stopserver)
+* [`getServerUrl()`](#getserverurl)
 
 </docgen-index>
 
 <docgen-api>
 <!--Update the source file JSDoc comments and rerun docgen to update the docs below-->
 
-### echo(...)
+### startServer()
 
 ```typescript
-echo(options: { value: string; }) => Promise<{ value: string; }>
+startServer() => Promise<{ url: string; }>
 ```
 
-| Param         | Type                            |
-| ------------- | ------------------------------- |
-| **`options`** | <code>{ value: string; }</code> |
+Starts the local HTTP server.
 
-**Returns:** <code>Promise&lt;{ value: string; }&gt;</code>
+**Returns:** <code>Promise&lt;{ url: string; }&gt;</code>
+
+--------------------
+
+
+### stopServer()
+
+```typescript
+stopServer() => Promise<void>
+```
+
+Stops the local HTTP server.
+
+--------------------
+
+
+### getServerUrl()
+
+```typescript
+getServerUrl() => Promise<{ url: string; }>
+```
+
+Gets the current URL of the local HTTP server.
+
+**Returns:** <code>Promise&lt;{ url: string; }&gt;</code>
 
 --------------------
 
