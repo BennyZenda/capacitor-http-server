@@ -16,6 +16,10 @@ public class HttpServerPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
     private let implementation = HttpServer()
 
+    override public func load() {
+        implementation.initialize()
+    }
+
     @objc func startServer(_ call: CAPPluginCall) {
         if let url = implementation.start() {
             call.resolve([

@@ -1,4 +1,7 @@
 package com.zenda.capacitor.httpserver;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.os.Bundle;
 
 import android.content.Context;
 import com.getcapacitor.Logger;
@@ -18,8 +21,25 @@ public class HttpServer {
     private File baseDir;
 
     public void init(Context context) {
-        // Default base directory: /data/data/<package>/files/app-b
-        this.baseDir = new File(context.getFilesDir(), "app-b");
+        String basePath = "";
+        try {
+            ApplicationInfo ai = context.getPackageManager().getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
+            Bundle bundle = ai.metaData;
+            if (bundle != null && bundle.containsKey("HTTP_SERVER_BASE_DIR")) {
+                basePath = bundle.getString("HTTP_SERVER_BASE_DIR");
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            Logger.error("HttpServer", "Failed to load meta-data, NameNotFound: " + e.getMessage(), e);
+        } catch (NullPointerException e) {
+            Logger.error("HttpServer", "Failed to load meta-data, NullPointer: " + e.getMessage(), e);
+        }
+
+        if (basePath != null && !basePath.isEmpty()) {
+            this.baseDir = new File(context.getFilesDir(), basePath);
+        } else {
+            this.baseDir = context.getFilesDir();
+        }
+
         if (!baseDir.exists()) {
             baseDir.mkdirs();
         }

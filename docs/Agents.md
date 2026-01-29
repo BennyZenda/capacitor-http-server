@@ -10,11 +10,40 @@ Create a Capacitor plugin that starts a local HTTP server on Android and iOS to 
 
 - **Platforms**: Android, iOS.
 - **Port**: Dynamic or configurable (default to a random available port).
-- **Base Directory**: Serve files from `/data/data/.../files/app-b` (Android) or equivalent (iOS).
+- **Base Directory**: Configurable via app metadata (default: app's files directory).
 - **Core Methods**:
   - `startServer()`: Starts the server and returns the URL.
   - `stopServer()`: Stops the server.
   - `getServerUrl()`: Retrieves the current server URL.
+
+## Configuration
+
+### Base Directory
+
+You can specify the subfolder from which the server should serve files by adding the following to your app's configuration:
+
+#### Android (`AndroidManifest.xml`)
+
+Add a `<meta-data>` tag inside the `<application>` element:
+
+```xml
+<application>
+    <meta-data
+        android:name="HTTP_SERVER_BASE_DIR"
+        android:value="micro-live-update-assets/apps" />
+</application>
+```
+
+#### iOS (`Info.plist`)
+
+Add the `HTTP_SERVER_BASE_DIR` key:
+
+```xml
+<key>HTTP_SERVER_BASE_DIR</key>
+<string>micro-live-update-assets/apps</string>
+```
+
+If these values are not present, the server defaults to serving from the root of the app's standard files/documents directory.
 
 ## Architecture
 
@@ -59,6 +88,7 @@ Instead of standard `http://`, the plugin should support a custom scheme `zhc://
 ### 2. Multi-Host Support
 
 Support multiple virtual hostnames within the custom scheme:
+
 - `zhc://app1`
 - `zhc://app2`
 - `zhc://app3`
