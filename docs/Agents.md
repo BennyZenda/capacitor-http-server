@@ -1,6 +1,6 @@
 # Agents Guide - Local HTTP Server Capacitor Plugin
 
-This document serves as instructions for AI agents and developers working on the `cap-http-server` plugin.
+This document serves as instructions for AI agents and developers working on the `capacitor-http-server` plugin.
 
 ## Project Goal
 
@@ -49,13 +49,15 @@ If these values are not present, the server defaults to serving from the root of
 
 - **TypeScript Layer**: `src/definitions.ts` defines the plugin interface.
 - **Android Layer**: Uses `com.zenda.capacitor.httpserver.HttpServer` to handle the actual server logic.
-- **iOS Layer**: (TBD) Likely using a Swift-based HTTP server library or native APIs.
+- **iOS Layer**: Uses `GCDWebServer` to handle the server logic.
 
 ## Key Files
 
-- [definitions.ts](file:///Users/benny/Desktop/Ben/Projects/micro-frontend/cap-http-server/cap-http-server/src/definitions.ts): API interface.
-- [HttpServerPlugin.java](file:///Users/benny/Desktop/Ben/Projects/micro-frontend/cap-http-server/cap-http-server/android/src/main/java/com/zenda/capacitor/httpserver/HttpServerPlugin.java): Android bridge.
-- [HttpServer.java](file:///Users/benny/Desktop/Ben/Projects/micro-frontend/cap-http-server/cap-http-server/android/src/main/java/com/zenda/capacitor/httpserver/HttpServer.java): Android implementation.
+- [definitions.ts](./src/definitions.ts): API interface.
+- [HttpServerPlugin.java](./android/src/main/java/com/zenda/capacitor/httpserver/HttpServerPlugin.java): Android bridge.
+- [HttpServer.java](./android/src/main/java/com/zenda/capacitor/httpserver/HttpServer.java): Android implementation.
+- [HttpServerPlugin.swift](./ios/Sources/HttpServerPlugin/HttpServerPlugin.swift): iOS bridge.
+- [HttpServer.swift](./ios/Sources/HttpServerPlugin/HttpServer.swift): iOS implementation.
 
 ## HTTP / Cleartext Support
 

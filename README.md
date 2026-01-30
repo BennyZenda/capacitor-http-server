@@ -1,9 +1,9 @@
-# cap-http-server
+# capacitor-http-server
 
-Craetes local http server
+Creates local http server
 
 ```bash
-npm install cap-http-server
+npm install capacitor-http-server
 npx cap sync
 ```
 
@@ -33,7 +33,7 @@ Add the following to your **main app's** `Info.plist`:
 ## Usage
 
 ```typescript
-import { HttpServer } from 'cap-http-server';
+import { HttpServer } from 'capacitor-http-server';
 
 // Start the server
 const { url } = await HttpServer.startServer();

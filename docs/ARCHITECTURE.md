@@ -1,6 +1,6 @@
 # Architecture - Local HTTP Server
 
-The `cap-http-server` plugin provides a bridge between Capacitor and a native HTTP server implementation on Android and iOS.
+The `capacitor-http-server` plugin provides a bridge between Capacitor and a native HTTP server implementation on Android and iOS.
 
 ## Component Diagram
 
@@ -10,7 +10,7 @@ graph LR
     B --> C[Android Native Bridge]
     B --> D[iOS Native Bridge]
     C --> E[NanoHTTPD / Native Server]
-    D --> F[Swift-based Server]
+    D --> F[GCDWebServer / Native Server]
     E --> G[App Files Storage]
     F --> G
 ```
@@ -19,7 +19,7 @@ graph LR
 
 1. **Initialization**: The plugin starts without an active server.
 2. **Starting**: When `startServer()` is called, the native side selects an available port and starts an HTTP server thread.
-3. **File Serving**: The server is configured to serve files from a specific internal directory (e.g., `/data/user/0/com.zenda.app/files/app-b`). If the `HTTP_SERVER_BASE_DIR` meta-data is specified in the AndroidManifest.xml or Info.plist, the server will serve files from that directory instead.
+3. **File Serving**: The server is configured to serve files from a specific internal directory (e.g., `/data/user/0/com.zenda.app/files/`). If the `HTTP_SERVER_BASE_DIR` meta-data is specified in the `AndroidManifest.xml` or `Info.plist`, the server will serve files from that directory instead.
 4. **Stopping**: `stopServer()` terminates the server thread and releases the port.
 
 ## Performance Considerations
