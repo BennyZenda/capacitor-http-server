@@ -4,6 +4,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.content.Context;
+import android.webkit.MimeTypeMap;
 import com.getcapacitor.Logger;
 import fi.iki.elonen.NanoHTTPD;
 import java.io.File;
@@ -124,41 +125,56 @@ public class HttpServer {
         public Response serve(IHTTPSession session) {
             // Extract the requested URI
             String uri = session.getUri();
+            
             // Map the URI to a file within the base directory
+            // Note: uri starts with /
             File file = new File(baseDir, uri.substring(1));
 
-            // If the file exists and is indeed a file, serve its content
-            if (file.exists() && file.isFile()) {
-                try {
-                    // Determine MIME type based on file extension
+            try {
+                // Security: Prevent Path Traversal attacks
+                // Ensure the resolved canonical path is still within the base directory
+                String canonicalBase = baseDir.getCanonicalPath();
+                String canonicalFile = file.getCanonicalPath();
+                
+                if (!canonicalFile.startsWith(canonicalBase)) {
+                    Logger.error("HttpServer", "Blocked path traversal attempt: " + uri);
+                    return newFixedLengthResponse(Response.Status.FORBIDDEN, NanoHTTPD.MIME_PLAINTEXT, "Forbidden: Path traversal attempt");
+                }
+
+                // If the file exists and is indeed a file, serve its content
+                if (file.exists() && file.isFile()) {
+                    // Determine MIME type using Android's native MimeTypeMap
                     String mimeType = getMimeType(uri);
                     InputStream inputStream = new FileInputStream(file);
                     // Return a chunked response for the file content
                     return newChunkedResponse(Response.Status.OK, mimeType, inputStream);
-                } catch (IOException e) {
-                    // Return internal error if file reading fails
-                    return newFixedLengthResponse(
-                        Response.Status.INTERNAL_ERROR,
-                        NanoHTTPD.MIME_PLAINTEXT,
-                        "Error reading file: " + e.getMessage()
-                    );
                 }
+            } catch (IOException e) {
+                // Return internal error if file reading or path resolution fails
+                Logger.error("HttpServer", "Error serving file: " + uri, e);
+                return newFixedLengthResponse(
+                    Response.Status.INTERNAL_ERROR,
+                    NanoHTTPD.MIME_PLAINTEXT,
+                    "Error processing request: " + e.getMessage()
+                );
             }
 
-            // Return 404 Not Found if the file doesn't exist
+            // Return 404 Not Found if the file doesn't exist or is outside baseDir
             return newFixedLengthResponse(Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "File not found: " + uri);
         }
 
         /**
-         * Rudimentary MIME type detection based on URI path.
+         * Resolves MIME type using Android's native MimeTypeMap.
          */
         private String getMimeType(String uri) {
-            if (uri.endsWith(".html") || uri.endsWith(".htm")) return "text/html";
-            if (uri.endsWith(".css")) return "text/css";
-            if (uri.endsWith(".js")) return "application/javascript";
-            if (uri.endsWith(".png")) return "image/png";
-            if (uri.endsWith(".jpg") || uri.endsWith(".jpeg")) return "image/jpeg";
-            if (uri.endsWith(".json")) return "application/json";
+            String extension = MimeTypeMap.getFileExtensionFromUrl(uri);
+            if (extension != null) {
+                String type = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension.toLowerCase());
+                if (type != null) {
+                    return type;
+                }
+            }
+            // Fallback to plaintext
             return NanoHTTPD.MIME_PLAINTEXT;
         }
     }

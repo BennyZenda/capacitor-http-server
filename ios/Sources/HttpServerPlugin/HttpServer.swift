@@ -1,5 +1,7 @@
 import Foundation
 import GCDWebServer
+import UniformTypeIdentifiers
+import Capacitor
 
 /// The HttpServer class manages the lifecycle and configuration of the local GCDWebServer.
 @objc public class HttpServer: NSObject {
@@ -46,8 +48,40 @@ import GCDWebServer
         // Initialize a new instance of GCDWebServer
         webServer = GCDWebServer()
         
-        // Add a handler to serve static files from the base directory
-        webServer?.addGETHandler(forBasePath: "/", directoryPath: baseDir.path, indexFilename: nil, cacheAge: 3600, allowRangeRequests: true)
+        // Use a weak reference to self in the handler block to avoid retain cycles
+        weak var weakSelf = self
+        
+        // Add a handler to serve files with security checks and native MIME type resolution
+        webServer?.addDefaultHandler(forMethod: "GET", request: GCDWebServerRequest.self, processBlock: { request in
+            guard let self = weakSelf, let baseDir = self.baseDir else {
+                return GCDWebServerErrorResponse(statusCode: 500)
+            }
+            
+            let path = request.path
+            // Map the request path to the absolute file path
+            let fileURL = baseDir.appendingPathComponent(path.hasPrefix("/") ? String(path.dropFirst()) : path)
+            
+            // Security: Prevent Path Traversal attacks
+            // Ensure the resolved file path is still within the base directory
+            let canonicalFile = fileURL.resolvingSymlinksInPath().path
+            let canonicalBase = baseDir.resolvingSymlinksInPath().path
+            
+            if !canonicalFile.hasPrefix(canonicalBase) {
+                CAPLog.print("Blocked path traversal attempt: \(path)")
+                return GCDWebServerErrorResponse(statusCode: 403)
+            }
+            
+            // Serve the file if it exists and is not a directory
+            var isDirectory: ObjCBool = false
+            if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory), !isDirectory.boolValue {
+                // Determine MIME type using iOS native UniformTypeIdentifiers
+                let mimeType = self.getMimeType(for: fileURL)
+                return GCDWebServerFileResponse(file: fileURL.path, contentType: mimeType)
+            }
+            
+            // Return 404 if file not found
+            return GCDWebServerErrorResponse(statusCode: 404)
+        })
 
         // Configure server options: use dynamic port (0) and bind to localhost
         let options: [String: Any] = [
@@ -83,5 +117,22 @@ import GCDWebServer
     /// Returns the current server URL if the server is running.
     @objc public func getUrl() -> String? {
         return serverUrl
+    }
+    
+    /// Resolves MIME type for a given URL using native system APIs.
+    private func getMimeType(for url: URL) -> String {
+        if #available(iOS 14.0, *) {
+            if let type = UTType(filenameExtension: url.pathExtension),
+               let mimeType = type.preferredMIMEType {
+                return mimeType
+            }
+        } else {
+            // Fallback for older iOS versions
+            if let ident = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, url.pathExtension as CFString, nil)?.takeRetainedValue(),
+               let type = UTTypeCopyPreferredTagWithClass(ident, kUTTagClassMIMEType)?.takeRetainedValue() as String? {
+                return type
+            }
+        }
+        return "application/octet-stream"
     }
 }

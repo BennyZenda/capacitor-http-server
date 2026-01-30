@@ -1,11 +1,31 @@
-# capacitor-http-server
+# Capacitor HTTP Server
 
-Creates local http server
+Local HTTP Server plugin for capacitor on Android and iOS to serve files from app-specific storage.
+
+## Platform Supported
+
+- Android
+- iOS
+
+## Installation
 
 ```bash
-npm install capacitor-http-server
+# Install from GitHub
+npm install https://github.com/BennyZenda/capacitor-http-server.git
+
+# Or from npm (if published)
+# npm install capacitor-http-server
+
 npx cap sync
 ```
+
+## Compatibility
+
+| Platform | Minimum Version | Target/Max Version |
+| :--- | :--- | :--- |
+| **Capacitor** | v8.0.0 | — |
+| **Android** | SDK 21 (Android 5.0) | SDK 34 (Android 14) |
+| **iOS** | iOS 15.0 | iOS 18.0+ |
 
 ## Configuration
 

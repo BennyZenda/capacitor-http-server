@@ -24,6 +24,27 @@ public class HttpServerPlugin: CAPPlugin, CAPBridgedPlugin {
     override public func load() {
         // Perform initial setup for the server implementation
         implementation.initialize()
+        
+        // Register for app lifecycle notifications to manage server state
+        NotificationCenter.default.addObserver(self, selector: #selector(handleDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleWillEnterForeground), name: UIApplication.willEnterForegroundNotification, object: nil)
+    }
+    
+    /// Cleanup notifications on deinit
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    /// Handles app entering background
+    @objc private func handleDidEnterBackground() {
+        // Stop server when backgrounded to save resources and avoid OS termination
+        implementation.stop()
+    }
+    
+    /// Handles app entering foreground
+    @objc private func handleWillEnterForeground() {
+        // Restart server when returning to foreground
+        _ = implementation.start()
     }
 
     /// Capacitor method to start the server.

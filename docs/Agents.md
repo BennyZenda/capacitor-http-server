@@ -1,6 +1,6 @@
 # Agents Guide - Local HTTP Server Capacitor Plugin
 
-This document serves as instructions for AI agents and developers working on the `capacitor-http-server` plugin.
+This document serves as instructions for AI agents and developers working on the local HTTP server plugin.
 
 ## Project Goal
 
