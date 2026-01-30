@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-    name: "CapHttpServer",
+    name: "CapacitorHttpServer",
     platforms: [.iOS(.v15)],
     products: [
         .library(
-            name: "CapHttpServer",
+            name: "CapacitorHttpServer",
             targets: ["HttpServerPlugin"])
     ],
     dependencies: [
