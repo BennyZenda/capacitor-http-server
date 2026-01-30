@@ -1,8 +1,8 @@
 package com.zenda.capacitor.httpserver;
+
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
-
 import android.content.Context;
 import com.getcapacitor.Logger;
 import fi.iki.elonen.NanoHTTPD;
@@ -13,18 +13,30 @@ import java.io.InputStream;
 import java.net.ServerSocket;
 import java.util.Map;
 
+/**
+ * HttpServer class manages the lifecycle and configuration of the local NanoHTTPD server on Android.
+ */
 public class HttpServer {
 
+    // Instance of the internal NanoHTTPD server implementation
     private AndroidHttpServer server;
+    // Cached URL where the server is accessible
     private String serverUrl;
+    // The port number the server is listening on
     private int port;
+    // The base directory from which static files are served
     private File baseDir;
 
+    /**
+     * Initializes the server configuration by reading the base directory from AndroidManifest meta-data.
+     */
     public void init(Context context) {
         String basePath = "";
         try {
+            // Retrieve application info to access meta-data from AndroidManifest.xml
             ApplicationInfo ai = context.getPackageManager().getApplicationInfo(context.getPackageName(), PackageManager.GET_META_DATA);
             Bundle bundle = ai.metaData;
+            // Check for the "HTTP_SERVER_BASE_DIR" configuration
             if (bundle != null && bundle.containsKey("HTTP_SERVER_BASE_DIR")) {
                 basePath = bundle.getString("HTTP_SERVER_BASE_DIR");
             }
@@ -34,52 +46,71 @@ public class HttpServer {
             Logger.error("HttpServer", "Failed to load meta-data, NullPointer: " + e.getMessage(), e);
         }
 
+        // Set the base directory; default to app's internal files directory if not specified
         if (basePath != null && !basePath.isEmpty()) {
             this.baseDir = new File(context.getFilesDir(), basePath);
         } else {
             this.baseDir = context.getFilesDir();
         }
-
-        if (!baseDir.exists()) {
-            baseDir.mkdirs();
-        }
     }
 
+    /**
+     * Starts the HTTP server on a free port and returns its URL.
+     */
     public String start() throws IOException {
+        // If server is already running, return the existing URL
         if (server != null && server.isAlive()) {
             return serverUrl;
         }
 
+        // Find an available network port
         this.port = findFreePort();
+        // Create and start the NanoHTTPD server instance
         this.server = new AndroidHttpServer(port, baseDir);
         this.server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+        // Construct the server's local URL
         this.serverUrl = "http://localhost:" + port + "/";
 
         Logger.info("HttpServer", "Server started at " + serverUrl + " serving from " + baseDir.getAbsolutePath());
         return serverUrl;
     }
 
+    /**
+     * Stops the running HTTP server and clears associated state.
+     */
     public void stop() {
         if (server != null) {
+            // Shut down the server
             server.stop();
+            // Clear instance variables
             server = null;
             serverUrl = null;
             Logger.info("HttpServer", "Server stopped");
         }
     }
 
+    /**
+     * Returns the current server URL.
+     */
     public String getUrl() {
         return serverUrl;
     }
 
+    /**
+     * Finds an available port on the device by opening a ServerSocket on port 0.
+     */
     private int findFreePort() {
         try (ServerSocket socket = new ServerSocket(0)) {
             return socket.getLocalPort();
         } catch (IOException e) {
-            return 8080; // Fallback
+            // Fallback port if automatic detection fails
+            return 8080;
         }
     }
 
+    /**
+     * Internal implementation of NanoHTTPD to serve files from the specified base directory.
+     */
     private static class AndroidHttpServer extends NanoHTTPD {
 
         private final File baseDir;
@@ -91,15 +122,21 @@ public class HttpServer {
 
         @Override
         public Response serve(IHTTPSession session) {
+            // Extract the requested URI
             String uri = session.getUri();
+            // Map the URI to a file within the base directory
             File file = new File(baseDir, uri.substring(1));
 
+            // If the file exists and is indeed a file, serve its content
             if (file.exists() && file.isFile()) {
                 try {
+                    // Determine MIME type based on file extension
                     String mimeType = getMimeType(uri);
                     InputStream inputStream = new FileInputStream(file);
+                    // Return a chunked response for the file content
                     return newChunkedResponse(Response.Status.OK, mimeType, inputStream);
                 } catch (IOException e) {
+                    // Return internal error if file reading fails
                     return newFixedLengthResponse(
                         Response.Status.INTERNAL_ERROR,
                         NanoHTTPD.MIME_PLAINTEXT,
@@ -108,9 +145,13 @@ public class HttpServer {
                 }
             }
 
+            // Return 404 Not Found if the file doesn't exist
             return newFixedLengthResponse(Response.Status.NOT_FOUND, NanoHTTPD.MIME_PLAINTEXT, "File not found: " + uri);
         }
 
+        /**
+         * Rudimentary MIME type detection based on URI path.
+         */
         private String getMimeType(String uri) {
             if (uri.endsWith(".html") || uri.endsWith(".htm")) return "text/html";
             if (uri.endsWith(".css")) return "text/css";
