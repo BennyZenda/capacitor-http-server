@@ -137,7 +137,7 @@ public class HttpServer {
                 String canonicalFile = file.getCanonicalPath();
                 
                 if (!canonicalFile.startsWith(canonicalBase)) {
-                    Logger.error("HttpServer", "Blocked path traversal attempt: " + uri);
+                    // Logger.error("HttpServer", "Blocked path traversal attempt: " + uri);
                     return newFixedLengthResponse(Response.Status.FORBIDDEN, NanoHTTPD.MIME_PLAINTEXT, "Forbidden: Path traversal attempt");
                 }
 
