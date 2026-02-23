@@ -15,7 +15,8 @@ public class HttpServerPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "startServer", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopServer", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getServerUrl", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getServerUrl", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "isActive", returnType: CAPPluginReturnPromise)
     ]
     // Internal instance that handles the actual server logic
     private let implementation = HttpServer()
@@ -38,13 +39,15 @@ public class HttpServerPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Handles app entering background
     @objc private func handleDidEnterBackground() {
         // Stop server when backgrounded to save resources and avoid OS termination
-        implementation.stop()
+        implementation.pause()
     }
     
     /// Handles app entering foreground
     @objc private func handleWillEnterForeground() {
-        // Restart server when returning to foreground
-        _ = implementation.start()
+        // Restart server when returning to foreground only if it was intended to be running
+        if implementation.wasRunning {
+            _ = implementation.start()
+        }
     }
 
     /// Capacitor method to start the server.
@@ -83,5 +86,12 @@ public class HttpServerPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve([
             "url": url
         ])
+    }
+
+    /// Capacitor method to retrieve active server status.
+    @objc func isActive(_ call: CAPPluginCall) {
+        let status = implementation.getActiveStatus()
+        // Note: Using JSPluginKit's native type casting
+        call.resolve(status)
     }
 }

@@ -73,6 +73,7 @@ await HttpServer.stopServer();
 * [`startServer()`](#startserver)
 * [`stopServer()`](#stopserver)
 * [`getServerUrl()`](#getserverurl)
+* [`isActive()`](#isactive)
 
 </docgen-index>
 
@@ -112,6 +113,19 @@ getServerUrl() => Promise<{ url: string; }>
 Gets the current URL of the local HTTP server.
 
 **Returns:** <code>Promise&lt;{ url: string; }&gt;</code>
+
+--------------------
+
+
+### isActive()
+
+```typescript
+isActive() => Promise<{ active: boolean; port?: number; hostname?: string; protocol?: string; url?: string; }>
+```
+
+Gets the active status of the local HTTP server.
+
+**Returns:** <code>Promise&lt;{ active: boolean; port?: number; hostname?: string; protocol?: string; url?: string; }&gt;</code>
 
 --------------------
 

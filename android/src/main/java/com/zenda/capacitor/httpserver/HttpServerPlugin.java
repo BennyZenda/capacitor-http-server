@@ -70,4 +70,33 @@ public class HttpServerPlugin extends Plugin {
         // Resolve the promise with the URL (may be null if server is stopped)
         call.resolve(ret);
     }
+
+    /**
+     * Returns the active status of the HTTP server.
+     * @param call Plugin call from the web layer.
+     */
+    @PluginMethod
+    public void isActive(PluginCall call) {
+        call.resolve(implementation.getActiveStatus());
+    }
+
+    @Override
+    protected void handleOnPause() {
+        super.handleOnPause();
+        // Stop server when backgrounded to save resources
+        implementation.pause();
+    }
+
+    @Override
+    protected void handleOnResume() {
+        super.handleOnResume();
+        // Restart server when returning to foreground if it was intended to be running
+        if (implementation.wasRunning()) {
+            try {
+                implementation.start();
+            } catch (IOException e) {
+                com.getcapacitor.Logger.error("HttpServerPlugin", "Failed to resume server", e);
+            }
+        }
+    }
 }

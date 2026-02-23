@@ -18,4 +18,15 @@ export interface HttpServerPlugin {
     getServerUrl(): Promise<{
         url: string;
     }>;
+    /**
+     * Gets the active status of the local HTTP server.
+     * @returns {Promise<{ active: boolean, port?: number, hostname?: string, protocol?: string, url?: string }>} A promise that resolves with the server status and connection info.
+     */
+    isActive(): Promise<{
+        active: boolean;
+        port?: number;
+        hostname?: string;
+        protocol?: string;
+        url?: string;
+    }>;
 }

@@ -27,11 +27,20 @@ public class HttpServer {
     private int port;
     // The base directory from which static files are served
     private File baseDir;
+    // The application context
+    private Context context;
+    // Flag to track user intent for the server state
+    private boolean wasRunning = false;
+    
+    private static final int DEFAULT_STATIC_PORT = 55667;
+    private static final String PREFS_NAME = "CapacitorHttpServerPrefs";
+    private static final String PREF_PORT_KEY = "server_port";
 
     /**
      * Initializes the server configuration by reading the base directory from AndroidManifest meta-data.
      */
     public void init(Context context) {
+        this.context = context;
         String basePath = "";
         try {
             // Retrieve application info to access meta-data from AndroidManifest.xml
@@ -56,30 +65,68 @@ public class HttpServer {
     }
 
     /**
-     * Starts the HTTP server on a free port and returns its URL.
+     * Starts the HTTP server on an available port and returns its URL.
      */
     public String start() throws IOException {
         // If server is already running, return the existing URL
         if (server != null && server.isAlive()) {
+            this.wasRunning = true;
             return serverUrl;
         }
 
-        // Find an available network port
-        this.port = findFreePort();
-        // Create and start the NanoHTTPD server instance
-        this.server = new AndroidHttpServer(port, baseDir);
-        this.server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+        // 1. Try static port
+        boolean started = tryStartOnPort(DEFAULT_STATIC_PORT);
+        
+        // 2. Try stored port if static port fails
+        if (!started) {
+            android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            int storedPort = prefs.getInt(PREF_PORT_KEY, -1);
+            if (storedPort != -1 && storedPort != DEFAULT_STATIC_PORT) {
+                started = tryStartOnPort(storedPort);
+            }
+        }
+        
+        // 3. Try dynamic free port if all above failed
+        if (!started) {
+            int freePort = findFreePort();
+            started = tryStartOnPort(freePort);
+            if (started) {
+                // Store the new dynamically chosen port
+                android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                prefs.edit().putInt(PREF_PORT_KEY, this.port).apply();
+            }
+        }
+
+        if (!started) {
+            throw new IOException("Failed to start server on any port.");
+        }
+
         // Construct the server's local URL
         this.serverUrl = "http://localhost:" + port + "/";
+        this.wasRunning = true;
 
         Logger.info("HttpServer", "Server started at " + serverUrl + " serving from " + baseDir.getAbsolutePath());
         return serverUrl;
+    }
+    
+    private boolean tryStartOnPort(int targetPort) {
+        try {
+            this.server = new AndroidHttpServer(targetPort, baseDir);
+            this.server.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+            this.port = this.server.getListeningPort();
+            return true;
+        } catch (IOException e) {
+            Logger.debug("HttpServer", "Failed to start server on port " + targetPort);
+            this.server = null;
+            return false;
+        }
     }
 
     /**
      * Stops the running HTTP server and clears associated state.
      */
     public void stop() {
+        this.wasRunning = false;
         if (server != null) {
             // Shut down the server
             server.stop();
@@ -89,12 +136,43 @@ public class HttpServer {
             Logger.info("HttpServer", "Server stopped");
         }
     }
+    
+    /**
+     * Used by app lifecycle hooks to pause the server without losing the user's intent.
+     */
+    public void pause() {
+        if (server != null) {
+            server.stop();
+            server = null;
+            Logger.info("HttpServer", "Server paused");
+        }
+    }
+    
+    public boolean wasRunning() {
+        return this.wasRunning;
+    }
 
     /**
      * Returns the current server URL.
      */
     public String getUrl() {
         return serverUrl;
+    }
+
+    /**
+     * Returns the active status and connection info as a JSObject.
+     */
+    public com.getcapacitor.JSObject getActiveStatus() {
+        com.getcapacitor.JSObject status = new com.getcapacitor.JSObject();
+        boolean active = (server != null && server.isAlive());
+        status.put("active", active);
+        if (active) {
+            status.put("port", this.port);
+            status.put("hostname", "localhost");
+            status.put("protocol", "http:");
+            status.put("url", this.serverUrl);
+        }
+        return status;
     }
 
     /**

@@ -48,6 +48,21 @@
         "docs": "Gets the current URL of the local HTTP server.",
         "complexTypes": [],
         "slug": "getserverurl"
+      },
+      {
+        "name": "isActive",
+        "signature": "() => Promise<{ active: boolean; port?: number; hostname?: string; protocol?: string; url?: string; }>",
+        "parameters": [],
+        "returns": "Promise<{ active: boolean; port?: number | undefined; hostname?: string | undefined; protocol?: string | undefined; url?: string | undefined; }>",
+        "tags": [
+          {
+            "name": "returns",
+            "text": "A promise that resolves with the server status and connection info."
+          }
+        ],
+        "docs": "Gets the active status of the local HTTP server.",
+        "complexTypes": [],
+        "slug": "isactive"
       }
     ],
     "properties": []

@@ -11,6 +11,12 @@ import Capacitor
     private var serverUrl: String?
     // Base directory from which files will be served
     private var baseDir: URL?
+    
+    // User intent state for lifecycle management
+    public var wasRunning = false
+    
+    private let defaultStaticPort = 55667
+    private let portKey = "CapacitorHttpServerPort"
 
     /// Initializes the server configuration, determining the base directory for serving files.
     @objc public func initialize() {
@@ -37,6 +43,7 @@ import Capacitor
     @objc public func start() -> String? {
         // Return existing URL if server is already running
         if let url = serverUrl, webServer?.isRunning == true {
+            self.wasRunning = true
             return url
         }
 
@@ -83,30 +90,48 @@ import Capacitor
             return GCDWebServerErrorResponse(statusCode: 404)
         })
 
-        // Configure server options: use dynamic port (0) and bind to localhost
-        let options: [String: Any] = [
-            GCDWebServerOption_Port: 0,
-            GCDWebServerOption_BindToLocalhost: true
-        ]
-
-        do {
-            // Attempt to start the server with the specified options
-            try webServer?.start(options: options)
-            // If successfully started, capture and return the server URL
-            if let url = webServer?.serverURL {
-                self.serverUrl = url.absoluteString
-                return self.serverUrl
+        var started = tryStart(on: defaultStaticPort)
+        
+        if !started {
+            let storedPort = UserDefaults.standard.integer(forKey: portKey)
+            if storedPort > 0 && storedPort != defaultStaticPort {
+                started = tryStart(on: storedPort)
             }
-        } catch {
-            // Log any errors encountered during server startup
-            print("Could not start server: \(error)")
+        }
+        
+        if !started {
+            started = tryStart(on: 0) // dynamic port fallback
+            if started, let actualPort = webServer?.port {
+                UserDefaults.standard.set(Int(actualPort), forKey: portKey)
+            }
         }
 
+        if started, let url = webServer?.serverURL {
+            self.serverUrl = url.absoluteString
+            self.wasRunning = true
+            return self.serverUrl
+        }
+
+        webServer = nil
         return nil
+    }
+    
+    private func tryStart(on port: Int) -> Bool {
+        let options: [String: Any] = [
+            GCDWebServerOption_Port: port,
+            GCDWebServerOption_BindToLocalhost: true
+        ]
+        do {
+            try webServer?.start(options: options)
+            return true
+        } catch {
+            return false
+        }
     }
 
     /// Stops the running HTTP server and clears associated state.
     @objc public func stop() {
+        self.wasRunning = false
         // Stop the server if it's running
         webServer?.stop()
         // Reset server instance and URL cache
@@ -114,9 +139,29 @@ import Capacitor
         serverUrl = nil
     }
 
+    /// Pauses the running HTTP server for backgrounding without modifying user intent.
+    @objc public func pause() {
+        webServer?.stop()
+        webServer = nil
+        serverUrl = nil
+    }
+
     /// Returns the current server URL if the server is running.
     @objc public func getUrl() -> String? {
         return serverUrl
+    }
+    
+    /// Returns the active status and connection properties.
+    @objc public func getActiveStatus() -> [String: Any] {
+        let active = webServer?.isRunning == true
+        var status: [String: Any] = ["active": active]
+        if active {
+            status["port"] = webServer?.port
+            status["hostname"] = "localhost"
+            status["protocol"] = "http:"
+            status["url"] = self.serverUrl
+        }
+        return status
     }
     
     /// Resolves MIME type for a given URL using native system APIs.

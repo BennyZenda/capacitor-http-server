@@ -9,5 +9,8 @@ export class HttpServerWeb extends WebPlugin {
     async getServerUrl() {
         throw this.unimplemented('Not implemented on web.');
     }
+    async isActive() {
+        throw this.unimplemented('Not implemented on web.');
+    }
 }
 //# sourceMappingURL=web.js.map

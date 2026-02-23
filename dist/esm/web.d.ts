@@ -8,4 +8,11 @@ export declare class HttpServerWeb extends WebPlugin implements HttpServerPlugin
     getServerUrl(): Promise<{
         url: string;
     }>;
+    isActive(): Promise<{
+        active: boolean;
+        port?: number;
+        hostname?: string;
+        protocol?: string;
+        url?: string;
+    }>;
 }
