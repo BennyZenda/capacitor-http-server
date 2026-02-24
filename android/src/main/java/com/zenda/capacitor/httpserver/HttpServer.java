@@ -4,6 +4,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.content.Context;
+import android.util.Log;
 import android.webkit.MimeTypeMap;
 import com.getcapacitor.Logger;
 import fi.iki.elonen.NanoHTTPD;
@@ -219,13 +220,22 @@ public class HttpServer {
                     return newFixedLengthResponse(Response.Status.FORBIDDEN, NanoHTTPD.MIME_PLAINTEXT, "Forbidden: Path traversal attempt");
                 }
 
-                // If the file exists and is indeed a file, serve its content
-                if (file.exists() && file.isFile()) {
-                    // Determine MIME type using Android's native MimeTypeMap
-                    String mimeType = getMimeType(uri);
-                    InputStream inputStream = new FileInputStream(file);
-                    // Return a chunked response for the file content
-                    return newChunkedResponse(Response.Status.OK, mimeType, inputStream);
+                // If the file exists, serve its content or look for index.html if it's a directory
+                if (file.exists()) {
+                    if (file.isDirectory()) {
+                        File indexFile = new File(file, "index.html");
+                        if (indexFile.exists() && indexFile.isFile()) {
+                            String mimeType = getMimeType(indexFile.toURI().toString());
+                            InputStream inputStream = new FileInputStream(indexFile);
+                            return newChunkedResponse(Response.Status.OK, mimeType, inputStream);
+                        }
+                    } else if (file.isFile()) {
+                        // Determine MIME type using Android's native MimeTypeMap
+                        String mimeType = getMimeType(uri);
+                        InputStream inputStream = new FileInputStream(file);
+                        // Return a chunked response for the file content
+                        return newChunkedResponse(Response.Status.OK, mimeType, inputStream);
+                    }
                 }
             } catch (IOException e) {
                 // Return internal error if file reading or path resolution fails
@@ -235,6 +245,25 @@ public class HttpServer {
                     NanoHTTPD.MIME_PLAINTEXT,
                     "Error processing request: " + e.getMessage()
                 );
+            }
+
+            // SPA Fallback: walk up the directory tree to find an index.html
+            File fallbackDir = file.getParentFile();
+            while (fallbackDir != null && fallbackDir.getAbsolutePath().startsWith(baseDir.getAbsolutePath())) {
+                File indexFile = new File(fallbackDir, "index.html");
+                if (indexFile.exists() && indexFile.isFile()) {
+                    try {
+                        String mimeType = getMimeType(indexFile.toURI().toString());
+                        InputStream inputStream = new FileInputStream(indexFile);
+                        return newChunkedResponse(Response.Status.OK, mimeType, inputStream);
+                    } catch (IOException ex) {
+                        Logger.error("HttpServer", "Error serving SPA fallback index.html", ex);
+                    }
+                }
+                if (fallbackDir.getAbsolutePath().equals(baseDir.getAbsolutePath())) {
+                    break;
+                }
+                fallbackDir = fallbackDir.getParentFile();
             }
 
             // Return 404 Not Found if the file doesn't exist or is outside baseDir

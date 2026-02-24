@@ -78,12 +78,38 @@ import Capacitor
                 return GCDWebServerErrorResponse(statusCode: 403)
             }
             
-            // Serve the file if it exists and is not a directory
+            // Serve the file if it exists and is not a directory, or serve index.html if it is a directory
             var isDirectory: ObjCBool = false
-            if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory), !isDirectory.boolValue {
-                // Determine MIME type using iOS native UniformTypeIdentifiers
-                let mimeType = self.getMimeType(for: fileURL)
-                return GCDWebServerFileResponse(file: fileURL.path, contentType: mimeType)
+            if FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory) {
+                if isDirectory.boolValue {
+                    let indexFileURL = fileURL.appendingPathComponent("index.html")
+                    var indexIsDirectory: ObjCBool = false
+                    if FileManager.default.fileExists(atPath: indexFileURL.path, isDirectory: &indexIsDirectory), !indexIsDirectory.boolValue {
+                        let mimeType = self.getMimeType(for: indexFileURL)
+                        return GCDWebServerFileResponse(file: indexFileURL.path, contentType: mimeType)
+                    }
+                } else {
+                    // Determine MIME type using iOS native UniformTypeIdentifiers
+                    let mimeType = self.getMimeType(for: fileURL)
+                    return GCDWebServerFileResponse(file: fileURL.path, contentType: mimeType)
+                }
+            }
+            
+            // SPA Fallback: walk up the directory tree to find an index.html
+            var fallbackDir = fileURL.deletingLastPathComponent()
+            
+            while fallbackDir.path.hasPrefix(baseDir.path) {
+                let indexFileURL = fallbackDir.appendingPathComponent("index.html")
+                var indexIsDirectory: ObjCBool = false
+                if FileManager.default.fileExists(atPath: indexFileURL.path, isDirectory: &indexIsDirectory), !indexIsDirectory.boolValue {
+                    let mimeType = self.getMimeType(for: indexFileURL)
+                    return GCDWebServerFileResponse(file: indexFileURL.path, contentType: mimeType)
+                }
+                
+                if fallbackDir.path == baseDir.path {
+                    break
+                }
+                fallbackDir = fallbackDir.deletingLastPathComponent()
             }
             
             // Return 404 if file not found
