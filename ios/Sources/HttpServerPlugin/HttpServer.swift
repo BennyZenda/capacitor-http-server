@@ -2,6 +2,7 @@ import Foundation
 import GCDWebServer
 import UniformTypeIdentifiers
 import Capacitor
+import MobileCoreServices
 
 /// The HttpServer class manages the lifecycle and configuration of the local GCDWebServer.
 @objc public class HttpServer: NSObject {
@@ -86,12 +87,16 @@ import Capacitor
                     var indexIsDirectory: ObjCBool = false
                     if FileManager.default.fileExists(atPath: indexFileURL.path, isDirectory: &indexIsDirectory), !indexIsDirectory.boolValue {
                         let mimeType = self.getMimeType(for: indexFileURL)
-                        return GCDWebServerFileResponse(file: indexFileURL.path, contentType: mimeType)
+                        let response = GCDWebServerFileResponse(file: indexFileURL.path)
+                        response?.contentType = mimeType
+                        return response
                     }
                 } else {
                     // Determine MIME type using iOS native UniformTypeIdentifiers
                     let mimeType = self.getMimeType(for: fileURL)
-                    return GCDWebServerFileResponse(file: fileURL.path, contentType: mimeType)
+                    let response = GCDWebServerFileResponse(file: fileURL.path)
+                    response?.contentType = mimeType
+                    return response
                 }
             }
             
@@ -103,7 +108,9 @@ import Capacitor
                 var indexIsDirectory: ObjCBool = false
                 if FileManager.default.fileExists(atPath: indexFileURL.path, isDirectory: &indexIsDirectory), !indexIsDirectory.boolValue {
                     let mimeType = self.getMimeType(for: indexFileURL)
-                    return GCDWebServerFileResponse(file: indexFileURL.path, contentType: mimeType)
+                    let response = GCDWebServerFileResponse(file: indexFileURL.path)
+                    response?.contentType = mimeType
+                    return response
                 }
                 
                 if fallbackDir.path == baseDir.path {
@@ -199,7 +206,7 @@ import Capacitor
             }
         } else {
             // Fallback for older iOS versions
-            if let ident = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, url.pathExtension as CFString, nil)?.takeRetainedValue(),
+            if let ident = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, url.pathExtension as CFString, nil as CFString?)?.takeRetainedValue(),
                let type = UTTypeCopyPreferredTagWithClass(ident, kUTTagClassMIMEType)?.takeRetainedValue() as String? {
                 return type
             }
