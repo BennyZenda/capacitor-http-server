@@ -80,7 +80,7 @@ public class HttpServerPlugin extends Plugin {
         call.resolve(implementation.getActiveStatus());
     }
 
-    @Override
+    /* @Override
     protected void handleOnPause() {
         super.handleOnPause();
         // Stop server when backgrounded to save resources
@@ -98,5 +98,5 @@ public class HttpServerPlugin extends Plugin {
                 com.getcapacitor.Logger.error("HttpServerPlugin", "Failed to resume server", e);
             }
         }
-    }
+    } */
 }

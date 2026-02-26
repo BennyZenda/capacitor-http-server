@@ -53,15 +53,48 @@ import MobileCoreServices
             return nil
         }
 
-        // Initialize a new instance of GCDWebServer
-        webServer = GCDWebServer()
+        // Stop any existing inactive server before we reassign
+        webServer?.stop()
+        webServer = nil
+        
+        // 1. Try static port
+        var startedServer = startServerInstance(on: defaultStaticPort, baseDir: baseDir)
+        
+        // 2. Try stored port if static port fails
+        if startedServer == nil {
+            let storedPort = UserDefaults.standard.integer(forKey: portKey)
+            if storedPort > 0 && storedPort != defaultStaticPort {
+                startedServer = startServerInstance(on: storedPort, baseDir: baseDir)
+            }
+        }
+        
+        // 3. Try dynamic free port if all above failed
+        if startedServer == nil {
+            startedServer = startServerInstance(on: 0, baseDir: baseDir) // dynamic port fallback
+            if let server = startedServer {
+                UserDefaults.standard.set(Int(server.port), forKey: portKey)
+            }
+        }
+
+        if let server = startedServer, let url = server.serverURL {
+            self.webServer = server
+            self.serverUrl = url.absoluteString
+            self.wasRunning = true
+            return self.serverUrl
+        }
+
+        return nil
+    }
+    
+    private func startServerInstance(on port: Int, baseDir: URL) -> GCDWebServer? {
+        let server = GCDWebServer()
         
         // Use a weak reference to self in the handler block to avoid retain cycles
         weak var weakSelf = self
         
         // Add a handler to serve files with security checks and native MIME type resolution
-        webServer?.addDefaultHandler(forMethod: "GET", request: GCDWebServerRequest.self, processBlock: { request in
-            guard let self = weakSelf, let baseDir = self.baseDir else {
+        server.addDefaultHandler(forMethod: "GET", request: GCDWebServerRequest.self, processBlock: { request in
+            guard let self = weakSelf else {
                 return GCDWebServerErrorResponse(statusCode: 500)
             }
             
@@ -122,43 +155,21 @@ import MobileCoreServices
             // Return 404 if file not found
             return GCDWebServerErrorResponse(statusCode: 404)
         })
-
-        var started = tryStart(on: defaultStaticPort)
         
-        if !started {
-            let storedPort = UserDefaults.standard.integer(forKey: portKey)
-            if storedPort > 0 && storedPort != defaultStaticPort {
-                started = tryStart(on: storedPort)
-            }
-        }
-        
-        if !started {
-            started = tryStart(on: 0) // dynamic port fallback
-            if started, let actualPort = webServer?.port {
-                UserDefaults.standard.set(Int(actualPort), forKey: portKey)
-            }
-        }
-
-        if started, let url = webServer?.serverURL {
-            self.serverUrl = url.absoluteString
-            self.wasRunning = true
-            return self.serverUrl
-        }
-
-        webServer = nil
-        return nil
-    }
-    
-    private func tryStart(on port: Int) -> Bool {
         let options: [String: Any] = [
             GCDWebServerOption_Port: port,
-            GCDWebServerOption_BindToLocalhost: true
+            GCDWebServerOption_BindToLocalhost: true,
+            GCDWebServerOption_AutomaticallySuspendInBackground: false
         ]
+        
         do {
-            try webServer?.start(options: options)
-            return true
+            try server.start(options: options)
+            return server
         } catch {
-            return false
+            // CRITICAL: Stop the server to clean up internal _options if start failed
+            // This prevents a crash when the GCDWebServer instance is deallocated
+            server.stop()
+            return nil
         }
     }
 
